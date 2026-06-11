@@ -4,6 +4,7 @@ import cors from "cors"
 
 import { connectToDB } from "./src/config/db.js"
 import getRedisClient, { connectToRedis } from "./src/config/redis.js"
+import { startScheduler, stopScheduler } from "./src/schedulers/schedulerLoop.js"
 
 import { logger } from "./src/utils/logger.js"
 import { config } from "./src/config/index.js"
@@ -39,7 +40,7 @@ async function bootstrap() {
   const redis = getRedisClient(); 
   await redis.set('key', 'value'); 
  
-  // TODO: startScheduler();
+  startScheduler();
  
   const server = app.listen(config.port, () => {
     logger.info(
@@ -51,7 +52,7 @@ async function bootstrap() {
 
   const shutdown = (signal) => {
     logger.info({ signal }, "Shutting down server...");
-    //TODO: stopScheduler();
+    stopScheduler();
     server.close(() => {
       logger.info("HTTP server closed");
       process.exit(0);
