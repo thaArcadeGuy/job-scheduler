@@ -4,9 +4,9 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node server.js",
     "start:worker": "node src/workers/worker.js",
-    "dev": "nodemon src/server.js",
+    "dev": "nodemon server.js",
     "dev:worker": "nodemon src/workers/worker.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:worker\""
   },
