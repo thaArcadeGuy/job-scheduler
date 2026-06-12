@@ -1,6 +1,5 @@
 export class MinHeap {
   constructor() {
-    /** @type {Array<HeapNode>} */
     this._heap = [];
   }
 
@@ -12,19 +11,11 @@ export class MinHeap {
     return this._heap.length === 0;
   }
 
-  /**
-   * Insert a job descriptor.
-   * @param {HeapNode} node
-   */
   insert(node) {
     this._heap.push(node);
     this._siftUp(this._heap.length - 1);
   }
 
-  /**
-   * Remove and return the highest-priority job descriptor.
-   * @returns {HeapNode|null}
-   */
   extractMin() {
     if (this.isEmpty()) return null;
 
@@ -39,23 +30,10 @@ export class MinHeap {
     return min;
   }
 
-  /**
-   * Peek at the highest-priority item without removing it.
-   * @returns {HeapNode|null}
-   */
   peek() {
     return this._heap[0] ?? null;
   }
 
-  /**
-   * Update the effectivePriority of a job already in the heap.
-   * Used by starvation prevention to boost low-priority jobs.
-   * O(n) scan — acceptable because starvation checks run infrequently.
-   *
-   * @param {string} jobId
-   * @param {number} newEffectivePriority
-   * @returns {boolean} true if the node was found and updated
-   */
   updatePriority(jobId, newEffectivePriority) {
     const idx = this._heap.findIndex((n) => n.id === jobId);
     if (idx === -1) return false;
@@ -65,13 +43,6 @@ export class MinHeap {
     return true;
   }
 
-  /**
-   * Remove a specific job from the heap (e.g. on cancellation).
-   * O(n) scan.
-   *
-   * @param {string} jobId
-   * @returns {boolean}
-   */
   remove(jobId) {
     const idx = this._heap.findIndex((n) => n.id === jobId);
     if (idx === -1) return false;
@@ -85,10 +56,6 @@ export class MinHeap {
     return true;
   }
 
-  /**
-   * Return all current nodes (for debugging / monitoring).
-   * @returns {HeapNode[]}
-   */
   snapshot() {
     return [...this._heap];
   }
@@ -145,11 +112,3 @@ export class MinHeap {
     [this._heap[i], this._heap[j]] = [this._heap[j], this._heap[i]];
   }
 }
-
-/**
- * @typedef {object} HeapNode
- * @property {string} id                 - Job _id
- * @property {number} effectivePriority  - Current effective priority (1-3, or 0 on boost)
- * @property {Date|null} scheduledAt
- * @property {Date} createdAt
- */

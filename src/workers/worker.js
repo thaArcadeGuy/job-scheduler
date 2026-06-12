@@ -1,5 +1,4 @@
 import dotenv from "dotenv"
-import "express-async-errors"
 import { v4 as uuidv4 } from "uuid"
 import { connectToDB } from "../config/db.js"
 import getRedisClient, { connectToRedis }  from "../config/redis.js"
