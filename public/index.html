@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Scheduler — Dilamme</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 16 16"><path d="M8 1L1 4v4c0 4 3.5 6.5 7 7.5C14.5 14.5 15 10 15 8V4L8 1zm0 2l5 2.2V8c0 3-2.5 5-5 5.9C5.5 13 3 11 3 8V5.2L8 3z"/></svg>
+      </div>
+      <div>
+        <span class="brand-name">job-scheduler</span>
+        <span class="brand-sub">dilamme</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-indicator">
+        <div class="live-dot" id="live-dot"></div>
+        <span id="live-label">LIVE</span>
+      </div>
+      <div class="last-updated" id="last-updated">—</div>
+    </div>
+  </header>
+
+  <div style="overflow-y:auto">
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="jobs">
+        Jobs <span class="tab-badge" id="badge-jobs">0</span>
+      </button>
+      <button class="tab-btn" data-tab="create">Create Job</button>
+      <button class="tab-btn" data-tab="dlq">
+        DLQ <span class="tab-badge danger" id="badge-dlq">0</span>
+      </button>
+    </nav>
+
+    <main class="main">
+
+      <div class="tab-panel active" id="panel-dashboard">
+
+        <div class="stat-grid">
+          <div class="stat-card" data-status="pending">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value" id="stat-pending">—</div>
+            <div class="stat-sub">waiting to run</div>
+          </div>
+          <div class="stat-card" data-status="processing">
+            <div class="stat-label">Processing</div>
+            <div class="stat-value" id="stat-processing">—</div>
+            <div class="stat-sub">running now</div>
+          </div>
+          <div class="stat-card" data-status="completed">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value" id="stat-completed">—</div>
+            <div class="stat-sub">successful</div>
+          </div>
+          <div class="stat-card" data-status="failed">
+            <div class="stat-label">Failed</div>
+            <div class="stat-value" id="stat-failed">—</div>
+            <div class="stat-sub">all retries exhausted</div>
+          </div>
+          <div class="stat-card" data-status="cancelled">
+            <div class="stat-label">Cancelled</div>
+            <div class="stat-value" id="stat-cancelled">—</div>
+            <div class="stat-sub">stopped by user</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Recent Jobs</span>
+          <button class="btn btn-ghost btn-sm" onclick="switchTab('jobs')">View All →</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Retries</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="recent-jobs-body">
+              <tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div>Loading…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <div class="tab-panel" id="panel-jobs">
+
+        <div class="section-header">
+          <span class="section-title">All Jobs</span>
+          <div class="filter-row">
+            <select id="filter-status" onchange="loadJobs(1)">
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <select id="filter-priority" onchange="loadJobs(1)">
+              <option value="">All priorities</option>
+              <option value="1">High (1)</option>
+              <option value="2">Medium (2)</option>
+              <option value="3">Low (3)</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="loadJobs(currentPage)">↺ Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>P</th>
+                <th>Status</th>
+                <th>Retries</th>
+                <th>Scheduled</th>
+                <th>Interval</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="jobs-body">
+              <tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div>Loading…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <span id="jobs-pagination-info">—</span>
+          <div class="pagination-btns">
+            <button class="btn btn-ghost btn-sm" id="jobs-prev" onclick="loadJobs(currentPage - 1)">← Prev</button>
+            <button class="btn btn-ghost btn-sm" id="jobs-next" onclick="loadJobs(currentPage + 1)">Next →</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tab-panel" id="panel-create">
+
+        <div class="form-card">
+          <div class="section-header" style="margin-bottom:20px">
+            <span class="section-title">Create New Job</span>
+          </div>
+
+          <div class="form-grid">
+
+            <div class="form-group">
+              <label class="form-label">Job Type *</label>
+              <input id="f-type" type="text" placeholder="e.g. send_email" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select id="f-priority">
+                <option value="1">1 — High</option>
+                <option value="2" selected>2 — Medium</option>
+                <option value="3">3 — Low</option>
+              </select>
+            </div>
+
+            <div class="form-group full">
+              <label class="form-label">Payload (JSON)</label>
+              <textarea id="f-payload" placeholder='{"to": "user@example.com", "subject": "Welcome"}'></textarea>
+              <span class="form-hint">Must be valid JSON. Leave empty for {}</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Scheduled At</label>
+              <input id="f-scheduled-at" type="datetime-local" />
+              <span class="form-hint">Leave blank to run immediately</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Recurring Interval</label>
+              <select id="f-interval">
+                <option value="">None (one-time)</option>
+                <option value="every_1_minute">Every 1 minute</option>
+                <option value="every_5_minutes">Every 5 minutes</option>
+                <option value="every_1_hour">Every 1 hour</option>
+              </select>
+            </div>
+
+            <div class="form-group full">
+              <label class="form-label">Depends On (DAG)</label>
+              <input id="f-depends-on" type="text" placeholder="job-id-1, job-id-2 (comma separated)" />
+              <span class="form-hint">Job won't start until all listed jobs complete</span>
+            </div>
+
+          </div>
+
+          <div class="form-footer">
+            <button class="btn btn-primary" onclick="createJob()">Create Job</button>
+            <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
+            <span class="form-result" id="form-result"></span>
+          </div>
+        </div>
+
+        <div style="margin-top:24px">
+          <div class="section-header">
+            <span class="section-title">Quick Demo — DAG Workflow</span>
+          </div>
+          <div class="form-card" style="max-width:480px">
+            <p style="font-size:12px; color:var(--text-dim); margin-bottom:16px; line-height:1.8">
+              Creates a 3-job chain:<br>
+              <span style="color:var(--text); font-weight:700">Generate Report → Upload File → Send Email</span><br>
+              Each job waits for the previous one to complete.
+            </p>
+            <button class="btn btn-ghost" onclick="createDAGDemo()">▶ Run DAG Demo</button>
+            <span class="form-result" id="dag-result" style="margin-left:12px"></span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="tab-panel" id="panel-dlq">
+
+        <div class="section-header">
+          <span class="section-title">Dead-Letter Queue</span>
+          <div class="filter-row">
+            <select id="filter-dlq-status" onchange="loadDLQ(1)">
+              <option value="">All</option>
+              <option value="waiting">Waiting</option>
+              <option value="retrying">Retrying</option>
+              <option value="resolved">Resolved</option>
+              <option value="permanently_failed">Permanently Failed</option>
+            </select>
+            <button class="btn btn-ghost btn-sm" onclick="loadDLQ(dlqPage)">↺ Refresh</button>
+          </div>
+        </div>
+
+        <div id="dlq-list">
+          <div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div>Loading…</div>
+        </div>
+
+        <div class="pagination" style="margin-top:14px">
+          <span id="dlq-pagination-info">—</span>
+          <div class="pagination-btns">
+            <button class="btn btn-ghost btn-sm" id="dlq-prev" onclick="loadDLQ(dlqPage - 1)">← Prev</button>
+            <button class="btn btn-ghost btn-sm" id="dlq-next" onclick="loadDLQ(dlqPage + 1)">Next →</button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="./scripts/script.js"></script>
+</body>
+</html>
