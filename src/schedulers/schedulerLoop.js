@@ -1,5 +1,6 @@
 import { Job } from "../models/job.model.js";
 import { MinHeap } from "../queues/heap.js";
+import { TimingWheel } from "../algorithms/timingWheel.js"
 import { enqueue, updateScore } from "../queues/redisQueue.js";
 import { logJobEvent } from "../utils/jobLogger.js";
 import { config } from "../config/index.js";
@@ -10,27 +11,43 @@ const TICK_MS = 500
 const STARVATION_CHECK_MS = 5_000
 
 const heap = new MinHeap();
- 
+const timingWheel = new TimingWheel({ wheelSize: 60, tickMs: 1000 })
+
 const enqueuedSet = new Set();
  
 let _tickTimer = null;
 let _starvationTimer = null;
+let _wheelTickTimer = null;
  
 export function startScheduler() {
   logger.info("Scheduler loop started");
   _tickTimer = setInterval(tick, TICK_MS);
   _starvationTimer = setInterval(runStarvationPrevention, STARVATION_CHECK_MS);
+  _wheelTickTimer   = setInterval(() => {
+    const fired = timingWheel.tick();
+    if (fired.length > 0) {
+      logger.debug({ count: fired.length, snap: timingWheel.snapshot() }, 'TimingWheel tick fired');
+    }
+  }, 1000);
 }
  
 export function stopScheduler() {
   if (_tickTimer) clearInterval(_tickTimer);
   if (_starvationTimer) clearInterval(_starvationTimer);
+  if (_wheelTickTimer)  clearInterval(_wheelTickTimer);
   logger.info("Scheduler loop stopped");
 }
  
 
 export function getHeapSnapshot() {
   return heap.snapshot();
+}
+
+export function getSchedulerStatus() {
+  return {
+    heap: { size: heap.size, snapshot: heap.snapshot() },
+    timingWheel: timingWheel.snapshot(),
+  };
 }
  
 async function tick() {
@@ -57,7 +74,10 @@ async function tick() {
         createdAt: job.createdAt,
       });
 
+      heap.insert(node);
       await enqueue(job);
+
+      timingWheel.insert(node);
     }
 
     const pendingIds = new Set(dueJobs.map((j) => j._id));
@@ -65,6 +85,7 @@ async function tick() {
       if (!pendingIds.has(id)) {
         enqueuedSet.delete(id);
         heap.remove(id);
+        timingWheel.remove(id);
       }
     }
   } catch (err) {
