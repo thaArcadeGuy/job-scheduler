@@ -15,13 +15,25 @@ import { errorHandler } from "./src/middlewares/errorHandler.js"
 import { logger } from "./src/utils/logger.js"
 import { config } from "./src/config/index.js"
 
+import path from "path"
+import { fileURLToPath } from "url";
+
 dotenv.config()
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express()
 
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.use((req, _res, next) => {
   logger.debug({ method: req.method, url: req.originalUrl }, "Incoming request");
