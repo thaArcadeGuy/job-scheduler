@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-12T19:23:02.426Z",
+  "generatedAt": "2026-06-13T17:33:17.296Z",
   "environment": {
     "node": "v20.19.0",
     "platform": "win32",
@@ -10,14 +10,14 @@
       "scenario": "All immediate (no scheduledAt)",
       "count": 1000,
       "heap": {
-        "insertMs": 2.263,
-        "extractMs": 8.661,
-        "totalMs": 10.923
+        "insertMs": 0.82,
+        "extractMs": 3.636,
+        "totalMs": 4.456
       },
       "timingWheel": {
-        "insertMs": 0.685,
-        "tickMs": 0.275,
-        "totalMs": 0.959
+        "insertMs": 0.45,
+        "tickMs": 0.154,
+        "totalMs": 0.604
       },
       "winner": "timing-wheel"
     },
@@ -25,14 +25,14 @@
       "scenario": "Mixed: 50% immediate, 50% within 30s",
       "count": 1000,
       "heap": {
-        "insertMs": 1.705,
-        "extractMs": 13.298,
-        "totalMs": 15.004
+        "insertMs": 0.893,
+        "extractMs": 5.357,
+        "totalMs": 6.25
       },
       "timingWheel": {
-        "insertMs": 1.684,
-        "tickMs": 0.185,
-        "totalMs": 1.87
+        "insertMs": 1.082,
+        "tickMs": 0.123,
+        "totalMs": 1.205
       },
       "winner": "timing-wheel"
     },
@@ -40,14 +40,14 @@
       "scenario": "All scheduled within 60s (wheel sweet spot)",
       "count": 1000,
       "heap": {
-        "insertMs": 0.597,
-        "extractMs": 4.419,
-        "totalMs": 5.015
+        "insertMs": 0.942,
+        "extractMs": 7.075,
+        "totalMs": 8.017
       },
       "timingWheel": {
-        "insertMs": 0.699,
-        "tickMs": 0.924,
-        "totalMs": 1.622
+        "insertMs": 2.013,
+        "tickMs": 2.689,
+        "totalMs": 4.703
       },
       "winner": "timing-wheel"
     },
@@ -55,14 +55,14 @@
       "scenario": "Wide range: 0–600s (forces overflow)",
       "count": 1000,
       "heap": {
-        "insertMs": 1.012,
-        "extractMs": 4.276,
-        "totalMs": 5.288
+        "insertMs": 1.231,
+        "extractMs": 11.028,
+        "totalMs": 12.258
       },
       "timingWheel": {
-        "insertMs": 0.466,
-        "tickMs": 34.215,
-        "totalMs": 34.681
+        "insertMs": 0.235,
+        "tickMs": 30.029,
+        "totalMs": 30.264
       },
       "winner": "heap"
     },
@@ -70,14 +70,14 @@
       "scenario": "High volume: 10,000 jobs immediate",
       "count": 10000,
       "heap": {
-        "insertMs": 8.38,
-        "extractMs": 89.619,
-        "totalMs": 98
+        "insertMs": 4.228,
+        "extractMs": 39.786,
+        "totalMs": 44.014
       },
       "timingWheel": {
-        "insertMs": 5.224,
-        "tickMs": 0.01,
-        "totalMs": 5.235
+        "insertMs": 2.302,
+        "tickMs": 0.009,
+        "totalMs": 2.311
       },
       "winner": "timing-wheel"
     },
@@ -85,14 +85,14 @@
       "scenario": "High volume: 10,000 jobs within 60s",
       "count": 10000,
       "heap": {
-        "insertMs": 10.433,
-        "extractMs": 122.574,
-        "totalMs": 133.007
+        "insertMs": 5.666,
+        "extractMs": 46.955,
+        "totalMs": 52.62
       },
       "timingWheel": {
-        "insertMs": 8.334,
-        "tickMs": 6.751,
-        "totalMs": 15.085
+        "insertMs": 4.67,
+        "tickMs": 4.968,
+        "totalMs": 9.638
       },
       "winner": "timing-wheel"
     }

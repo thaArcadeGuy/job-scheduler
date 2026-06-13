@@ -651,6 +651,9 @@ async function loadBenchmark() {
     document.getElementById('bm-wheel-wins').textContent = data.summary.wheelWins;
     document.getElementById('bm-heap-wins').textContent  = data.summary.heapWins;
 
+    document.getElementById('bm-env').textContent =
+    `Heap vs Timing Wheel · ${data.environment.node} · ${data.environment.platform}/${data.environment.arch}`;
+
     // Table rows
     document.getElementById('bm-rows').innerHTML = data.results.map(r => {
       const heapWon = r.winner === 'heap';
