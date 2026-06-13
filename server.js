@@ -15,6 +15,7 @@ import { errorHandler } from "./src/middlewares/errorHandler.js"
 import { logger } from "./src/utils/logger.js"
 import { config } from "./src/config/index.js"
 
+import fs from "fs";
 import path from "path"
 import { fileURLToPath } from "url";
 
@@ -43,6 +44,19 @@ app.use((req, _res, next) => {
 app.use("/api/jobs", jobsRouter)
 app.use("/api/dlq", dlqRouter)
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+
+app.get('/api/benchmark', (_req, res) => {
+  try {
+    const resultsPath = path.join(__dirname, 'benchmarks', 'results.json');
+    const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+    res.json(results);
+  } catch (error) {
+    res.status(404).json({ 
+      error: 'Run "npm run benchmark" first to generate results',
+      details: error.message
+    });
+  }
+});
 
 app.get("/api/scheduler/status", (_req, res) => {
   res.json(getSchedulerStatus());

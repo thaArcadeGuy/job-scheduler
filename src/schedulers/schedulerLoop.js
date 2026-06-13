@@ -1,5 +1,5 @@
 import { Job } from "../models/job.model.js";
-import { MinHeap } from "../queues/heap.js";
+import { MinHeap } from "../algorithms/heap.js";
 import { TimingWheel } from "../algorithms/timingWheel.js"
 import { enqueue, updateScore } from "../queues/redisQueue.js";
 import { logJobEvent } from "../utils/jobLogger.js";
@@ -74,10 +74,9 @@ async function tick() {
         createdAt: job.createdAt,
       });
 
-      heap.insert(node);
       await enqueue(job);
 
-      timingWheel.insert(node);
+      timingWheel.insert(job);
     }
 
     const pendingIds = new Set(dueJobs.map((j) => j._id));

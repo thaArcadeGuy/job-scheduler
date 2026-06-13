@@ -8,7 +8,8 @@
     "start:worker": "node src/workers/worker.js",
     "dev": "nodemon server.js",
     "dev:worker": "nodemon src/workers/worker.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:worker\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:worker\"",
+    "benchmark": "node benchmarks/algorithm-benchmark.js"
   },
   "keywords": [],
   "author": "",

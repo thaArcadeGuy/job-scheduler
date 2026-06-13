@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-06-12T19:23:02.426Z",
+  "environment": {
+    "node": "v20.19.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "results": [
+    {
+      "scenario": "All immediate (no scheduledAt)",
+      "count": 1000,
+      "heap": {
+        "insertMs": 2.263,
+        "extractMs": 8.661,
+        "totalMs": 10.923
+      },
+      "timingWheel": {
+        "insertMs": 0.685,
+        "tickMs": 0.275,
+        "totalMs": 0.959
+      },
+      "winner": "timing-wheel"
+    },
+    {
+      "scenario": "Mixed: 50% immediate, 50% within 30s",
+      "count": 1000,
+      "heap": {
+        "insertMs": 1.705,
+        "extractMs": 13.298,
+        "totalMs": 15.004
+      },
+      "timingWheel": {
+        "insertMs": 1.684,
+        "tickMs": 0.185,
+        "totalMs": 1.87
+      },
+      "winner": "timing-wheel"
+    },
+    {
+      "scenario": "All scheduled within 60s (wheel sweet spot)",
+      "count": 1000,
+      "heap": {
+        "insertMs": 0.597,
+        "extractMs": 4.419,
+        "totalMs": 5.015
+      },
+      "timingWheel": {
+        "insertMs": 0.699,
+        "tickMs": 0.924,
+        "totalMs": 1.622
+      },
+      "winner": "timing-wheel"
+    },
+    {
+      "scenario": "Wide range: 0–600s (forces overflow)",
+      "count": 1000,
+      "heap": {
+        "insertMs": 1.012,
+        "extractMs": 4.276,
+        "totalMs": 5.288
+      },
+      "timingWheel": {
+        "insertMs": 0.466,
+        "tickMs": 34.215,
+        "totalMs": 34.681
+      },
+      "winner": "heap"
+    },
+    {
+      "scenario": "High volume: 10,000 jobs immediate",
+      "count": 10000,
+      "heap": {
+        "insertMs": 8.38,
+        "extractMs": 89.619,
+        "totalMs": 98
+      },
+      "timingWheel": {
+        "insertMs": 5.224,
+        "tickMs": 0.01,
+        "totalMs": 5.235
+      },
+      "winner": "timing-wheel"
+    },
+    {
+      "scenario": "High volume: 10,000 jobs within 60s",
+      "count": 10000,
+      "heap": {
+        "insertMs": 10.433,
+        "extractMs": 122.574,
+        "totalMs": 133.007
+      },
+      "timingWheel": {
+        "insertMs": 8.334,
+        "tickMs": 6.751,
+        "totalMs": 15.085
+      },
+      "winner": "timing-wheel"
+    }
+  ],
+  "summary": {
+    "heapWins": 1,
+    "wheelWins": 5,
+    "recommendation": "heap",
+    "reasoning": "Priority ordering and precise backoff timing favour the heap at our job volumes."
+  }
+}
