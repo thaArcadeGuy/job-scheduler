@@ -63,7 +63,7 @@ async function loadRecentJobs() {
     const data = await apiFetch('/jobs?limit=8');
     const tbody = document.getElementById('recent-jobs-body');
     if (!data.jobs.length) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div>No jobs yet. <a href="#" onclick="switchTab('create')">Create one →</a></div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"></div>No jobs yet. <a href="#" onclick="switchTab('create')">Create one →</a></div></td></tr>`;
       return;
     }
     tbody.innerHTML = data.jobs.map(j => `
@@ -79,7 +79,7 @@ async function loadRecentJobs() {
   } catch (_) {}
 }
 
-async function loadJobs(page = 1) {
+async function loadJobs(page = 1, preserveData = false) {
   currentPage = Math.max(1, page);
   const status   = document.getElementById('filter-status').value;
   const priority = document.getElementById('filter-priority').value;
@@ -88,12 +88,20 @@ async function loadJobs(page = 1) {
   if (priority) params.set('priority', priority);
 
   const tbody = document.getElementById('jobs-body');
-  tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div>Loading…</div></td></tr>`;
+  
+  // Only show loading indicator on first load or page change
+  if (!preserveData) {
+    tbody.style.opacity = '0.5';
+  }
 
   try {
     const data = await apiFetch('/jobs?' + params);
+    
     if (!data.jobs.length) {
-      tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📭</div>No jobs match this filter.</div></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📭</div>No jobs match this filter.</div></tr>`;
+    } else if (preserveData && tbody.children.length > 0) {
+      // Update existing rows without rebuilding entire table
+      updateJobsTableIncremental(data.jobs, tbody);
     } else {
       tbody.innerHTML = data.jobs.map(j => jobRow(j)).join('');
     }
@@ -106,8 +114,122 @@ async function loadJobs(page = 1) {
     document.getElementById('jobs-prev').disabled = p <= 1;
     document.getElementById('jobs-next').disabled = p >= pages;
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">⚠️</div>${escHtml(err.message)}</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">⚠️</div>${escHtml(err.message)}</div></tr>`;
+  } finally {
+    tbody.style.opacity = '1';
   }
+}
+
+// NEW FUNCTION - Update only changed cells
+function updateJobsTableIncremental(newJobs, tbody) {
+  const existingRows = tbody.querySelectorAll('tr');
+  
+  newJobs.forEach((job, index) => {
+    if (index < existingRows.length) {
+      const row = existingRows[index];
+      const rowId = row.cells[0].textContent;
+      const newJobId = job._id.slice(0,8) + '…';
+      
+      // If same job ID, update only status and retry count
+      if (rowId === newJobId) {
+        updateJobRowCells(row, job);
+      } else {
+        // Different job, replace the whole row
+        const newRow = createJobRowElement(job);
+        row.parentNode.replaceChild(newRow, row);
+      }
+    } else {
+      // Add new row
+      tbody.appendChild(createJobRowElement(job));
+    }
+  });
+  
+  // Remove extra rows if fewer jobs than before
+  while (tbody.children.length > newJobs.length) {
+    tbody.removeChild(tbody.lastChild);
+  }
+}
+
+// NEW FUNCTION - Update only status and retry cells
+function updateJobRowCells(row, job) {
+  // Update status cell (index 3)
+  const statusCell = row.cells[3];
+  const newStatusPill = statusPill(job.status);
+  if (statusCell.innerHTML !== newStatusPill) {
+    statusCell.innerHTML = newStatusPill;
+  }
+  
+  // Update retry cell (index 4)
+  const retryCell = row.cells[4];
+  const newRetryText = `${job.retryCount}/${job.maxRetries}`;
+  const currentRetryText = retryCell.textContent;
+  if (currentRetryText !== newRetryText) {
+    retryCell.innerHTML = `<span class="retry-count ${job.retryCount > 0 ? 'has-retries' : ''}">${newRetryText}</span>`;
+  }
+}
+
+// NEW FUNCTION - Create a row element (not HTML string)
+function createJobRowElement(job) {
+  const row = document.createElement('tr');
+  
+  // ID cell
+  const idCell = document.createElement('td');
+  idCell.className = 'td-id';
+  idCell.title = job._id;
+  idCell.textContent = job._id.slice(0,8) + '…';
+  row.appendChild(idCell);
+  
+  // Type cell
+  const typeCell = document.createElement('td');
+  typeCell.className = 'td-type';
+  typeCell.textContent = escHtml(job.type);
+  row.appendChild(typeCell);
+  
+  // Priority cell
+  const prioCell = document.createElement('td');
+  prioCell.innerHTML = `<span class="prio prio-${job.priority}">${job.priority}</span>`;
+  row.appendChild(prioCell);
+  
+  // Status cell
+  const statusCell = document.createElement('td');
+  statusCell.innerHTML = statusPill(job.status);
+  row.appendChild(statusCell);
+  
+  // Retry cell
+  const retryCell = document.createElement('td');
+  retryCell.innerHTML = `<span class="retry-count ${job.retryCount > 0 ? 'has-retries' : ''}">${job.retryCount}/${job.maxRetries}</span>`;
+  row.appendChild(retryCell);
+  
+  // Scheduled cell
+  const scheduledCell = document.createElement('td');
+  scheduledCell.className = 'td-time';
+  scheduledCell.textContent = job.scheduledAt ? fmtDate(job.scheduledAt) : '—';
+  row.appendChild(scheduledCell);
+  
+  // Interval cell
+  const intervalCell = document.createElement('td');
+  intervalCell.className = 'td-time';
+  intervalCell.style.color = 'var(--accent)';
+  intervalCell.style.fontWeight = '700';
+  intervalCell.textContent = job.recurringInterval ? job.recurringInterval.replace('every_','') : '—';
+  row.appendChild(intervalCell);
+  
+  // Created cell
+  const createdCell = document.createElement('td');
+  createdCell.className = 'td-time';
+  createdCell.textContent = relTime(job.createdAt);
+  row.appendChild(createdCell);
+  
+  // Actions cell
+  const actionsCell = document.createElement('td');
+  if (!['completed','failed','cancelled'].includes(job.status)) {
+    actionsCell.innerHTML = `<button class="btn btn-danger btn-sm" onclick="cancelJob('${job._id}')">Cancel</button>`;
+  } else {
+    actionsCell.innerHTML = '<span style="color:var(--text-dim);font-size:11px">—</span>';
+  }
+  row.appendChild(actionsCell);
+  
+  return row;
 }
 
 function jobRow(j) {
@@ -235,20 +357,27 @@ async function createDAGDemo() {
   }
 }
 
-async function loadDLQ(page = 1) {
+async function loadDLQ(page = 1, preserveData = false) {
   dlqPage = Math.max(1, page);
   const status = document.getElementById('filter-dlq-status').value;
   const params = new URLSearchParams({ page: dlqPage, limit: 10 });
   if (status) params.set('status', status);
 
   const list = document.getElementById('dlq-list');
-  list.innerHTML = '<div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div>Loading…</div>';
+  
+  if (!preserveData) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon"><div class="spinner"></div></div>Loading…</div>';
+    list.style.opacity = '0.5';
+  }
 
   try {
     const data = await apiFetch('/dlq?' + params);
 
     if (!data.entries.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div>DLQ is empty${status ? ' for this filter' : ''}.</div>`;
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div>DLQ is empty${status ? ' for this filter' : ''}.</div>`;
+    } else if (preserveData && list.children.length > 0) {
+      // Update existing DLQ cards incrementally
+      updateDLQIncremental(data.entries, list);
     } else {
       list.innerHTML = data.entries.map(e => dlqCard(e)).join('');
     }
@@ -261,8 +390,116 @@ async function loadDLQ(page = 1) {
     document.getElementById('dlq-prev').disabled = p <= 1;
     document.getElementById('dlq-next').disabled = p >= pages;
   } catch (err) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>${escHtml(err.message)}</div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div>${escHtml(err.message)}</div>`;
+  } finally {
+    list.style.opacity = '1';
   }
+}
+
+// NEW FUNCTION - Update DLQ incrementally
+function updateDLQIncremental(newEntries, container) {
+  const existingCards = container.querySelectorAll('.dlq-card');
+  
+  newEntries.forEach((entry, index) => {
+    if (index < existingCards.length) {
+      const card = existingCards[index];
+      const cardId = card.querySelector('.dlq-job-id')?.textContent;
+      
+      // Update only status if same entry
+      if (cardId === entry.jobId) {
+        const statusSpan = card.querySelector('.pill');
+        const statusColor = {
+          waiting: 'var(--status-failed)',
+          retrying: 'var(--status-processing)',
+          resolved: 'var(--status-completed)',
+          permanently_failed: 'var(--status-failed)',
+        }[entry.dlqStatus] || 'var(--text-dim)';
+        
+        const statusBg = {
+          waiting: '#FFCCCC',
+          retrying: '#CCDDFF',
+          resolved: '#CCFFE0',
+          permanently_failed: '#FFCCCC',
+        }[entry.dlqStatus] || '#E8E8E8';
+        
+        if (statusSpan) {
+          statusSpan.style.background = statusBg;
+          statusSpan.style.color = statusColor;
+          statusSpan.innerHTML = `<span class="pill-dot" style="background:${statusColor}"></span>${entry.dlqStatus}`;
+        }
+      } else {
+        // Replace card with new one
+        const newCard = createDLQCardElement(entry);
+        card.parentNode.replaceChild(newCard, card);
+      }
+    } else {
+      // Add new card
+      container.appendChild(createDLQCardElement(entry));
+    }
+  });
+  
+  // Remove extra cards
+  while (container.children.length > newEntries.length) {
+    container.removeChild(container.lastChild);
+  }
+}
+
+// NEW FUNCTION - Create DLQ card element
+function createDLQCardElement(e) {
+  const statusColor = {
+    waiting: 'var(--status-failed)',
+    retrying: 'var(--status-processing)',
+    resolved: 'var(--status-completed)',
+    permanently_failed: 'var(--status-failed)',
+  }[e.dlqStatus] || 'var(--text-dim)';
+
+  const statusBg = {
+    waiting: '#FFCCCC',
+    retrying: '#CCDDFF',
+    resolved: '#CCFFE0',
+    permanently_failed: '#FFCCCC',
+  }[e.dlqStatus] || '#E8E8E8';
+
+  const canRetry = ['waiting','permanently_failed'].includes(e.dlqStatus);
+  
+  const div = document.createElement('div');
+  div.className = 'dlq-card';
+  div.id = `dlq-card-${e._id}`;
+  div.innerHTML = `
+    <div class="dlq-header" onclick="toggleDLQ('${e._id}')">
+      <div class="dlq-header-left">
+        <span class="prio prio-${e.priority || 2}">${e.priority || 2}</span>
+        <div>
+          <div class="dlq-job-type">${escHtml(e.jobType)}</div>
+          <div class="dlq-job-id">${e.jobId}</div>
+        </div>
+        <div class="dlq-error-preview">${escHtml(e.errorMessage)}</div>
+      </div>
+      <div class="dlq-header-right">
+        <span class="pill" style="background:${statusBg};color:${statusColor}">
+          <span class="pill-dot" style="background:${statusColor}"></span>
+          ${e.dlqStatus}
+        </span>
+        <span class="td-time">${relTime(e.createdAt)}</span>
+        ${canRetry ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation(); retryDLQ('${e._id}')">↺ Retry</button>` : ''}
+      </div>
+    </div>
+    <div class="dlq-body" id="dlq-body-${e._id}">
+      <div class="dlq-section-label">Error</div>
+      <div class="code-block">${escHtml(e.errorMessage)}</div>
+      <div class="dlq-section-label">Stack Trace</div>
+      <div class="code-block stack-trace">${escHtml(e.errorStack || 'No stack trace available.')}</div>
+      <div class="dlq-section-label">Payload</div>
+      <div class="code-block">${escHtml(JSON.stringify(e.payload, null, 2))}</div>
+      <div style="display:flex;gap:16px;margin-top:14px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">
+        <span>Attempts: <strong style="color:var(--text)">${e.totalAttempts}</strong></span>
+        <span>DLQ retries: <strong style="color:var(--text)">${e.retryCount}</strong></span>
+        <span>Entered: <strong style="color:var(--text)">${fmtDate(e.createdAt)}</strong></span>
+        ${e.lastRetriedAt ? `<span>Last retry: <strong style="color:var(--text)">${fmtDate(e.lastRetriedAt)}</strong></span>` : ''}
+      </div>
+    </div>
+  `;
+  return div;
 }
 
 function dlqCard(e) {
@@ -358,8 +595,8 @@ function startPolling() {
   pollTimer = setInterval(() => {
     loadStats();
     const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab;
-    if (activeTab === 'jobs') loadJobs(currentPage);
-    if (activeTab === 'dlq')  loadDLQ(dlqPage);
+    if (activeTab === 'jobs') loadJobs(currentPage, true);
+    if (activeTab === 'dlq')  loadDLQ(dlqPage, true);
   }, POLL_MS);
 }
 
