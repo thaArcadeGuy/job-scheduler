@@ -15,6 +15,7 @@ function switchTab(name) {
   if (name === 'jobs')      loadJobs(1);
   if (name === 'dlq')       loadDLQ(1);
   if (name === 'dashboard') loadStats();
+  if (name === 'benchmark') loadBenchmark();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -403,3 +404,85 @@ function toast(msg, type = 'info') {
 
 loadStats();
 startPolling();
+
+async function loadBenchmark() {
+  try {
+    const data = await apiFetch('/benchmark');
+
+    // Summary cards
+    document.getElementById('bm-total-scenarios').textContent = data.results.length;
+    document.getElementById('bm-wheel-wins').textContent = data.summary.wheelWins;
+    document.getElementById('bm-heap-wins').textContent  = data.summary.heapWins;
+
+    // Table rows
+    document.getElementById('bm-rows').innerHTML = data.results.map(r => {
+      const heapWon = r.winner === 'heap';
+      return `<tr>
+        <td class="td-type">${escHtml(r.scenario)}</td>
+        <td class="td-time">${r.count.toLocaleString()}</td>
+        <td class="td-time">${r.heap.insertMs.toFixed(3)}</td>
+        <td class="td-time">${r.heap.extractMs.toFixed(3)}</td>
+        <td class="td-time" style="${heapWon ? 'color:var(--status-completed);font-weight:700' : ''}">${r.heap.totalMs.toFixed(3)}</td>
+        <td class="td-time">${r.timingWheel.insertMs.toFixed(3)}</td>
+        <td class="td-time">${r.timingWheel.tickMs.toFixed(3)}</td>
+        <td class="td-time" style="${!heapWon ? 'color:var(--status-completed);font-weight:700' : ''}">${r.timingWheel.totalMs.toFixed(3)}</td>
+        <td>
+          <span class="pill ${heapWon ? 'processing' : 'failed'}">
+            <span class="pill-dot"></span>${heapWon ? 'Heap' : 'Wheel'}
+          </span>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Chart — destroy previous instance if it exists
+    if (window._bmChart) window._bmChart.destroy();
+    window._bmChart = new Chart(document.getElementById('bm-chart'), {
+      type: 'bar',
+      data: {
+        labels: data.results.map(r => r.scenario),
+        datasets: [
+          {
+            label: 'Heap total (ms)',
+            data: data.results.map(r => r.heap.totalMs),
+            backgroundColor: '#0055FF',
+            borderColor: '#000',
+            borderWidth: 2,
+            borderSkipped: false,
+          },
+          {
+            label: 'Timing Wheel total (ms)',
+            data: data.results.map(r => r.timingWheel.totalMs),
+            backgroundColor: '#FF2D6F',
+            borderColor: '#000',
+            borderWidth: 2,
+            borderSkipped: false,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)}ms`
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { font: { size: 9 }, maxRotation: 30, autoSkip: false },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { callback: v => v + 'ms', font: { size: 9 } },
+            grid: { color: '#eee' }
+          }
+        }
+      }
+    });
+  } catch (err) {
+    toast('Benchmark data unavailable — run: node benchmark/run.js', 'err');
+  }
+}
