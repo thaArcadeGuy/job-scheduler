@@ -96,15 +96,18 @@ async function processNextJob() {
     }
 
     if (job.dependsOn && job.dependsOn.length > 0) {
-      const unfinished = await checkDependencies(job);
-      if (unfinished.length > 0) {
-        logger.debug(
-          { jobId, unfinished },
-          "Job dependencies not yet completed — re-queuing"
-        );
-        await Job.findByIdAndUpdate(jobId, { status: "pending", lockedBy: null });
-        await enqueue(job);
-        await releaseLock(jobId);
+      try {
+        const unfinished = await checkDependencies(job);
+        if (unfinished.length > 0) {
+          logger.debug({ jobId, unfinished }, "Job dependencies not yet completed — re-queuing");
+          await Job.findByIdAndUpdate(jobId, { status: "pending", lockedBy: null });
+          await enqueue(job);
+          await releaseLock(jobId);
+          return;
+        }
+      } catch (depErr) {
+        logger.warn({ jobId, error: depErr.message }, "DAG dependency broken — sending job to DLQ");
+        await handleJobFailure(job, depErr);
         return;
       }
     }
