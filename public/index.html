@@ -6,6 +6,7 @@
   <title>Job Scheduler — Dilamme</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <link rel="stylesheet" href="./styles/style.css">
 </head>
 <body>
@@ -40,6 +41,9 @@
       <button class="tab-btn" data-tab="create">Create Job</button>
       <button class="tab-btn" data-tab="dlq">
         DLQ <span class="tab-badge danger" id="badge-dlq">0</span>
+      </button>
+      <button class="tab-btn" data-tab="benchmark">
+        Benchmark <span class="tab-badge" style="background:#FF2D6F">5-1</span>
       </button>
     </nav>
 
@@ -256,6 +260,78 @@
             <button class="btn btn-ghost btn-sm" id="dlq-prev" onclick="loadDLQ(dlqPage - 1)">← Prev</button>
             <button class="btn btn-ghost btn-sm" id="dlq-next" onclick="loadDLQ(dlqPage + 1)">Next →</button>
           </div>
+        </div>
+
+      </div>
+
+      <div class="tab-panel" id="panel-benchmark">
+
+        <div class="section-header">
+          <span class="section-title">Algorithm Benchmark</span>
+          <div class="filter-row">
+            <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">Heap vs Timing Wheel · Node v20.19.0 · win32/x64</span>
+            <button class="btn btn-ghost btn-sm" onclick="loadBenchmark()">↺ Reload</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px" id="bm-summary">
+          <div class="stat-card" data-status="processing">
+            <div class="stat-label">Scenarios run</div>
+            <div class="stat-value" id="bm-total-scenarios">—</div>
+            <div class="stat-sub">1k and 10k jobs</div>
+          </div>
+          <div class="stat-card" data-status="failed">
+            <div class="stat-label">Timing Wheel wins</div>
+            <div class="stat-value" id="bm-wheel-wins">—</div>
+            <div class="stat-sub">O(1) insert dominates</div>
+          </div>
+          <div class="stat-card" data-status="completed">
+            <div class="stat-label">Heap wins</div>
+            <div class="stat-value" id="bm-heap-wins">—</div>
+            <div class="stat-sub">wide range overflow</div>
+          </div>
+        </div>
+
+        <div class="section-header"><span class="section-title">Total time (ms) — all scenarios</span></div>
+        <div class="table-wrap" style="margin-bottom:24px;padding:16px">
+          <div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px;font-family:var(--font-mono);color:var(--text-dim)">
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:var(--status-processing);border:2px solid var(--border);display:inline-block"></span>Heap</span>
+            <span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;background:var(--accent);border:2px solid var(--border);display:inline-block"></span>Timing Wheel</span>
+          </div>
+          <div style="position:relative;width:100%;height:220px">
+            <canvas id="bm-chart" role="img" aria-label="Grouped bar chart comparing heap vs timing wheel total execution time across all benchmark scenarios.">Benchmark comparison chart.</canvas>
+          </div>
+        </div>
+
+        <div class="section-header"><span class="section-title">Scenario breakdown</span></div>
+        <div class="table-wrap" style="margin-bottom:24px">
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th><th>n</th>
+                <th>Heap insert</th><th>Heap extract</th><th>Heap total</th>
+                <th>Wheel insert</th><th>Wheel tick</th><th>Wheel total</th>
+                <th>Winner</th>
+              </tr>
+            </thead>
+            <tbody id="bm-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="section-header"><span class="section-title">Why we chose the heap</span></div>
+        <div class="form-card" style="max-width:100%">
+          <p style="font-size:12px;line-height:1.9;color:var(--text-dim)">
+            The timing wheel wins on raw throughput in 5 of 6 scenarios — its
+            <strong style="color:var(--text)">O(1) insert</strong> is hard to beat for large volumes of same-range jobs.
+            But our scheduler has two requirements the timing wheel can't satisfy cleanly:<br><br>
+            <strong style="color:var(--text)">1. Priority ordering.</strong>
+            Jobs must process in priority 1 → 2 → 3 order. The wheel has no inherent ordering within a slot — a secondary sort would be needed on every tick.<br><br>
+            <strong style="color:var(--text)">2. Precise backoff timing.</strong>
+            Retries fire at ~1s, ~5s, and ~25s with ±jitter. The wheel's fixed 1s resolution loses sub-tick precision. The heap handles arbitrary delay values natively.<br><br>
+            The one scenario where heap wins —
+            <strong style="color:var(--text)">wide range 0–600s (forced overflow)</strong>
+            — is exactly the real-world retry case. At our expected job volumes the log(n) factor is negligible.
+          </p>
         </div>
 
       </div>
